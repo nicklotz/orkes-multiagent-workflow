@@ -35,8 +35,11 @@ Additionally, a **custom worker task** handles notifications to Slack, email, an
 ### Prerequisites
 
 - Python 3.11+
+- Conda or Miniconda (recommended) - [Installation Guide](https://docs.conda.io/en/latest/miniconda.html)
+  - Alternative: Python venv can be used instead
+- Jupyter Notebook or JupyterLab
 - Orkes Conductor account (free at [orkes.io](https://orkes.io/))
-- OpenAI API key
+- OpenAI API key (configured in Orkes UI)
 
 ### Installation
 
@@ -45,12 +48,35 @@ Additionally, a **custom worker task** handles notifications to Slack, email, an
 git clone https://github.com/nicklotz/orkes-multiagent-workflow.git
 cd orkes-multiagent-workflow
 
+# Create conda environment (recommended)
+conda create -n orkes-multiagent python=3.11 -y
+conda activate orkes-multiagent
+
 # Install dependencies
-pip install conductor-python openai requests python-dotenv
+pip install conductor-python openai requests python-dotenv ipykernel
+
+# Register the environment as a Jupyter kernel
+python -m ipykernel install --user --name=orkes-multiagent --display-name="Python (orkes-multiagent)"
 
 # Set up environment variables
 cp .env.example .env
 # Edit .env and add your Orkes credentials
+```
+
+**Alternative: Without Conda**
+
+If you prefer not to use conda:
+
+```bash
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install dependencies
+pip install conductor-python openai requests python-dotenv jupyter
+
+# Set up environment variables
+cp .env.example .env
 ```
 
 ### Configuration
@@ -84,8 +110,20 @@ This keeps your API keys secure and centralized.
 ### Running the Notebook
 
 1. Ensure your `.env` file is configured (see above)
-2. Open `technical-implementation.ipynb` in Jupyter
-3. Run cells sequentially to:
+2. Start Jupyter:
+   ```bash
+   jupyter notebook
+   # or
+   jupyter lab
+   ```
+3. Open `technical-implementation.ipynb`
+4. **Select the kernel**:
+   - In Jupyter Notebook: `Kernel` → `Change Kernel` → `Python (orkes-multiagent)`
+   - In JupyterLab: Click kernel name in top-right → Select `Python (orkes-multiagent)`
+   - In VS Code: Click kernel selector → Choose `Python (orkes-multiagent)`
+5. Run cells sequentially starting from Step 0 to:
+   - Set up the conda environment (if not already done)
+   - Install dependencies
    - Define agents
    - Create the workflow
    - Register the worker
