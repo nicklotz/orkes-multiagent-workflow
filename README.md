@@ -42,22 +42,49 @@ Additionally, a **custom worker task** handles notifications to Slack, email, an
 
 ```bash
 # Clone this repository
-git clone <repository-url>
-cd orkes-multiagent-exercise
+git clone https://github.com/nicklotz/orkes-multiagent-workflow.git
+cd orkes-multiagent-workflow
 
 # Install dependencies
 pip install conductor-python openai requests python-dotenv
 
 # Set up environment variables
-export ORKES_KEY_ID="your-key-id"
-export ORKES_KEY_SECRET="your-key-secret"
-export OPENAI_API_KEY="your-openai-key"
+cp .env.example .env
+# Edit .env and add your Orkes credentials
 ```
+
+### Configuration
+
+#### 1. Orkes Credentials (Required)
+
+Create a `.env` file based on `.env.example`:
+
+```bash
+ORKES_SERVER_URL=https://play.orkes.io/api
+ORKES_KEY_ID=your_key_id_here
+ORKES_KEY_SECRET=your_key_secret_here
+```
+
+Get your credentials from:
+1. Sign up at [orkes.io](https://orkes.io/)
+2. Navigate to **Settings → Access Keys**
+3. Create a new access key and copy the Key ID and Secret
+
+#### 2. OpenAI Configuration (Required)
+
+The OpenAI API key is **not stored in code**. Instead, configure it in your Orkes account:
+
+1. Log into https://play.orkes.io/
+2. Navigate to **Settings → Integrations** (or **AI/LLM Providers**)
+3. Add OpenAI as a provider
+4. Enter your OpenAI API key
+
+This keeps your API keys secure and centralized.
 
 ### Running the Notebook
 
-1. Open `technical-implementation.ipynb` in Jupyter
-2. Update the configuration in Step 2 with your credentials
+1. Ensure your `.env` file is configured (see above)
+2. Open `technical-implementation.ipynb` in Jupyter
 3. Run cells sequentially to:
    - Define agents
    - Create the workflow
