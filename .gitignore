@@ -28,6 +28,8 @@ wheels/
 
 # Jupyter Notebook
 .ipynb_checkpoints
+technical-implementation.py
+executed-notebook.ipynb
 
 # macOS
 .DS_Store

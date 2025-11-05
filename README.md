@@ -129,6 +129,69 @@ This keeps your API keys secure and centralized.
    - Register the worker
    - Test with sample tickets
 
+## Running the Workflow
+
+You have multiple options for running this workflow:
+
+### Option 1: Command Line Script (Fastest)
+
+Run the standalone Python script directly from your terminal:
+
+```bash
+# Activate environment
+conda activate orkes-multiagent
+
+# Run the workflow
+python run_workflow.py
+```
+
+This runs all test tickets and displays results in your terminal.
+
+### Option 2: Using Makefile Commands
+
+If you have `make` installed:
+
+```bash
+# One-time setup
+make setup
+
+# Run the workflow
+make run
+
+# Or execute the notebook from terminal
+make run-notebook
+```
+
+See `make help` for all available commands.
+
+### Option 3: Execute Notebook from Terminal
+
+You can run the Jupyter notebook without opening the UI:
+
+```bash
+conda activate orkes-multiagent
+
+# Execute notebook in-place (updates the notebook with outputs)
+jupyter nbconvert --to notebook --execute --inplace technical-implementation.ipynb
+
+# Or execute and create a new output file
+jupyter nbconvert --to notebook --execute technical-implementation.ipynb --output executed-notebook.ipynb
+```
+
+### Option 4: Convert Notebook to Python Script
+
+```bash
+# Convert notebook to .py file
+jupyter nbconvert --to python technical-implementation.ipynb
+
+# Run the generated script
+python technical-implementation.py
+```
+
+### Option 5: Interactive Notebook (Traditional)
+
+For interactive exploration, use Jupyter as described in the "Running the Notebook" section above.
+
 ## How It Works
 
 ### Workflow Flow
