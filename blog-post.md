@@ -23,21 +23,18 @@ Instead, what if you built a team of specialists? That's where multi-agent syste
 Our system uses three AI agents, each with a defined role:
 
 ```mermaid
-graph TD
-    A[New Ticket] --> B[Classifier<br/>Agent]
-    B --> C{Categorized}
-    C --> D[Knowledge<br/>Agent]
-    D --> E{Solution<br/>Found?}
-    E -->|High Confidence| F[Auto-Resolve]
-    E -->|Low Confidence| G[Escalation<br/>Agent]
-    E -->|Critical| G
-    G --> H[Notification<br/>Worker]
-    H --> I[Human<br/>Notified]
+flowchart LR
+    A[Ticket] --> B[1. Classify]
+    B --> C[2. Search KB]
+    C --> D{Confident?}
+    D -->|Yes| E[Auto-Resolve]
+    D -->|No| F[3. Escalate]
+    F --> G[4. Notify Team]
 
     style B fill:#a8dadc
-    style D fill:#a8dadc
-    style G fill:#a8dadc
-    style H fill:#f4a261
+    style C fill:#a8dadc
+    style F fill:#a8dadc
+    style G fill:#f4a261
 ```
 
 ### Meet the Team
