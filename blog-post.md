@@ -6,6 +6,9 @@ What if, instead, you had specialists as in a band? A drummer keeping rhythm, a 
 
 This guide walks you through how one might architect an AI-powered customer support triage system where three specialized agents collaborate to handle incoming tickets automatically. More importantly, you'll see how orchestration platforms like Conductor solve the hard problems that emerge when AI agents need to work together.
 
+> [!NOTE]  
+> Check out the accompanying Jupyter notebook (`technical-implementation.ipynb`) for a guided tutorial on building this setup yourself, or `run_workfow.py` if you want to run it all in one go for testing purposes.
+
 ## The Problem: One Agent Can't Do Everything Well
 
 Think about your typical support queue. Tickets flood in with wildly different needs:
