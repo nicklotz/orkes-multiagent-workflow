@@ -24,15 +24,15 @@ Our system uses three AI agents, each with a defined role:
 
 ```mermaid
 graph TD
-    A[New Support Ticket] --> B[Classifier Agent]
-    B --> C{Category & Urgency Determined}
-    C --> D[Knowledge Agent]
-    D --> E{Solution Found?}
+    A[New Ticket] --> B[Classifier<br/>Agent]
+    B --> C{Categorized}
+    C --> D[Knowledge<br/>Agent]
+    D --> E{Solution<br/>Found?}
     E -->|High Confidence| F[Auto-Resolve]
-    E -->|Low Confidence| G[Escalation Agent]
-    E -->|Critical Priority| G
-    G --> H[Notification Worker]
-    H --> I[Human Agent Notified]
+    E -->|Low Confidence| G[Escalation<br/>Agent]
+    E -->|Critical| G
+    G --> H[Notification<br/>Worker]
+    H --> I[Human<br/>Notified]
 
     style B fill:#a8dadc
     style D fill:#a8dadc
