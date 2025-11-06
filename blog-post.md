@@ -239,9 +239,13 @@ That `>>` operator is doing a lot of heavy lifting. It's creating a directed acy
 - Handling failures with retries
 - Providing visibility into every step
 
-The end result looks something like this visually:
+The end result looks something like this in the Orkes UI:
 
 <img width="285" height="485" alt="Screenshot 2025-11-05 at 9 11 55 PM" src="https://github.com/user-attachments/assets/6c67e5a9-e0b3-4a5a-b45e-6b6389124259" />
+
+Where each task effectively acts as a function with its own inputs and outputs, all together comprising a collective "call stack" of execution.
+
+<img width="627" height="581" alt="Screenshot 2025-11-05 at 9 27 52 PM" src="https://github.com/user-attachments/assets/2bf33fa1-bfe5-490c-a3e2-d9e39b49def5" />
 
 ## The Real Power: What You Get For Free
 
