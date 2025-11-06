@@ -45,37 +45,29 @@ graph TD
 Let's start with code. Here's how we define the Classifier Agent using Orkes Conductor's Python SDK:
 
 ```python
-from conductor.client.workflow.task.llm_tasks.llm_chat_complete import LlmChatComplete
+from conductor.client.workflow.task.llm_tasks.llm_chat_complete import LlmChatComplete, ChatMessage
 
 def create_classifier_agent():
-    classifier_prompt = """
-    You are a customer support ticket classifier. Analyze the ticket and provide:
-    1. Category (billing, technical, account, general)
-    2. Sentiment (positive, neutral, negative, angry)
-    3. Urgency (low, medium, high, critical)
-
-    Ticket: ${workflow.input.ticket_content}
-
-    Respond in JSON format:
-    {
-      "category": "<category>",
-      "sentiment": "<sentiment>",
-      "urgency": "<urgency>",
-      "reasoning": "<brief explanation>"
-    }
-    """
-
     return LlmChatComplete(
         task_ref_name="classify_ticket",
-        llm_provider="openai",
+        llm_provider="openai",  # Match this to your Orkes integration name
         model="gpt-4",
-        instructions=classifier_prompt
+        messages=[
+            ChatMessage(
+                role="system",
+                message="You are a customer support ticket classifier. Analyze tickets and provide category (billing/technical/account/general), sentiment (positive/neutral/negative/angry), and urgency (low/medium/high/critical) in JSON format with a reasoning field."
+            ),
+            ChatMessage(
+                role="user",
+                message="${workflow.input.ticket_content}"
+            )
+        ]
     )
 ```
 
 Notice how we're using Conductor's `LlmChatComplete` task? This is where orchestration shines. Instead of writing custom code to call OpenAI's API, handle retries, and manage state, Conductor handles all of that. You just define what the agent should do.
 
-The `${workflow.input.ticket_content}` syntax is Conductor's way of passing data between tasks. It creates a data pipeline where each agent's output becomes the next agent's input.
+The messages use `ChatMessage` objects with familiar role-based structure (system and user), just like you'd use with OpenAI's API directly. The `${workflow.input.ticket_content}` syntax is Conductor's way of passing data between tasks - it creates a data pipeline where each agent's output becomes the next agent's input.
 
 ## The Knowledge Agent: Context is Everything
 
@@ -83,31 +75,24 @@ The Knowledge Agent builds on what the Classifier learned:
 
 ```python
 def create_knowledge_agent():
-    knowledge_prompt = """
-    Based on the ticket classification, search for relevant solutions.
-
-    Ticket: ${workflow.input.ticket_content}
-    Category: ${classify_ticket.output.result.category}
-    Urgency: ${classify_ticket.output.result.urgency}
-
-    Provide:
-    {
-      "kb_articles": ["article_id_1", "article_id_2"],
-      "resolution_steps": ["step1", "step2"],
-      "confidence": <0-100>,
-      "suggested_response": "<draft response to customer>"
-    }
-    """
-
     return LlmChatComplete(
         task_ref_name="search_knowledge",
-        llm_provider="openai",
+        llm_provider="openai",  # Match this to your Orkes integration name
         model="gpt-4",
-        instructions=knowledge_prompt
+        messages=[
+            ChatMessage(
+                role="system",
+                message="You are a knowledge base expert. Provide KB articles, resolution steps, confidence level (0-100), and a suggested customer response in JSON format."
+            ),
+            ChatMessage(
+                role="user",
+                message="Ticket: ${workflow.input.ticket_content}. Category: ${classify_ticket.output.result.category}. Urgency: ${classify_ticket.output.result.urgency}"
+            )
+        ]
     )
 ```
 
-See how it references `${classify_ticket.output.result.category}`? That's data from our first agent flowing into the second. This is multi-agent coordination in action: each agent builds on the previous one's work.
+See how it references `${classify_ticket.output.result.category}` in the user message? That's data from our first agent flowing into the second. This is multi-agent coordination in action: each agent builds on the previous one's work.
 
 ## Worker Tasks: Bridging Conductor and Your Infrastructure
 

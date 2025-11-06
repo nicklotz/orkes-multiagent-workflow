@@ -102,13 +102,27 @@ def send_notification(task_input):
     }
 
 
-def create_escalation_decision():
-    """Creates escalation decision tasks"""
-    escalation_eval = SimpleTask(
-        task_def_name="evaluate_escalation",
-        task_reference_name="eval_escalation"
+def create_escalation_agent():
+    """Creates the escalation evaluation agent"""
+    return LlmChatComplete(
+        task_ref_name="evaluate_escalation",
+        llm_provider="nl-openai",
+        model="gpt-4",
+        messages=[
+            ChatMessage(
+                role="system",
+                message="You are an escalation decision agent. Based on the ticket urgency, category, and knowledge base confidence, decide if the ticket should be escalated to a human agent. Return JSON with: should_escalate (boolean), assigned_team (string like 'billing-team', 'technical-support', 'account-management'), priority (low/medium/high/critical), reasoning (string)."
+            ),
+            ChatMessage(
+                role="user",
+                message="Ticket: ${workflow.input.ticket_content}. Category: ${classify_ticket.output.result.category}. Urgency: ${classify_ticket.output.result.urgency}. KB Confidence: ${search_knowledge.output.result.confidence}. Should this be escalated?"
+            )
+        ]
     )
 
+
+def create_notification_task():
+    """Creates the notification worker task"""
     notification_task = SimpleTask(
         task_def_name="send_escalation_notification",
         task_reference_name="notify_team"
@@ -119,10 +133,10 @@ def create_escalation_decision():
         'ticket_id': '${workflow.input.ticket_id}',
         'urgency': '${classify_ticket.output.result.urgency}',
         'category': '${classify_ticket.output.result.category}',
-        'assigned_to': '${eval_escalation.output.assigned_team}'
+        'assigned_to': '${evaluate_escalation.output.result.assigned_team}'
     }
 
-    return escalation_eval, notification_task
+    return notification_task
 
 
 def create_support_triage_workflow(workflow_executor):
@@ -136,12 +150,11 @@ def create_support_triage_workflow(workflow_executor):
     # Add all tasks in sequence
     classifier = create_classifier_agent()
     knowledge = create_knowledge_agent()
-    # Skip escalation for now - testing core LLM agents first
-    # escalation_eval, notification = create_escalation_decision()
+    escalation = create_escalation_agent()
+    notification = create_notification_task()
 
-    # Build the workflow chain
-    workflow >> classifier >> knowledge
-    # workflow >> escalation_eval >> notification
+    # Build the workflow chain - full end-to-end with all agents
+    workflow >> classifier >> knowledge >> escalation >> notification
 
     return workflow
 
@@ -184,11 +197,18 @@ def main():
     support_workflow = create_support_triage_workflow(workflow_executor)
     print("✅ Workflow created: customer_support_triage")
 
-    # Register worker (optional - needed for notifications)
-    # Note: Worker registration has some compatibility issues with current SDK version
-    # The workflow will still run, but custom worker tasks will need to be run separately
-    print("\n👷 Skipping worker registration for this test...")
-    print("   (Worker tasks can be run separately in production)")
+    # Register worker for notifications
+    # Note: In production, workers should run as separate containerized services
+    # For this demo, we'll skip worker registration - the workflow will execute all
+    # LLM-based agents (Classifier, Knowledge, Escalation) but the notification
+    # task will need a running worker to complete.
+    print("\n👷 Worker registration skipped for this demo...")
+    print("   The workflow includes 4 tasks:")
+    print("   - Classifier Agent (LLM)")
+    print("   - Knowledge Agent (LLM)")
+    print("   - Escalation Agent (LLM)")
+    print("   - Notification Task (Worker - requires separate worker process)")
+    print("\n   See README.md 'Production Deployment' section for worker deployment options")
 
     # Sample test tickets
     test_tickets = [

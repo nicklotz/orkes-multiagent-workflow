@@ -216,6 +216,144 @@ The custom worker demonstrates:
 - Reporting results back to Conductor
 - Integration with external services (Slack, email, etc.)
 
+## Production Deployment
+
+### Deploying Workers as Containers
+
+For production environments, worker tasks should run as separate containerized services. This provides scalability, reliability, and isolation.
+
+#### Option 1: Docker Container
+
+Create a `Dockerfile` for your worker:
+
+```dockerfile
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy worker code
+COPY run_workflow.py .
+COPY .env .
+
+# Run the worker
+CMD ["python", "-c", "from run_workflow import send_notification; from conductor.client.automator.task_handler import TaskHandler; from conductor.client.configuration.configuration import Configuration; from conductor.shared.configuration.settings.authentication_settings import AuthenticationSettings; import os; from dotenv import load_dotenv; load_dotenv(); config = Configuration(server_api_url=os.getenv('ORKES_SERVER_URL'), authentication_settings=AuthenticationSettings(key_id=os.getenv('ORKES_KEY_ID'), key_secret=os.getenv('ORKES_KEY_SECRET'))); handler = TaskHandler(workers=[send_notification], configuration=config); handler.start_processes()"]
+```
+
+Build and run:
+
+```bash
+docker build -t orkes-worker:latest .
+docker run -d --name support-worker \
+  --env-file .env \
+  orkes-worker:latest
+```
+
+#### Option 2: Kubernetes Deployment
+
+Create a `worker-deployment.yaml`:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: support-notification-worker
+spec:
+  replicas: 3  # Scale based on load
+  selector:
+    matchLabels:
+      app: support-worker
+  template:
+    metadata:
+      labels:
+        app: support-worker
+    spec:
+      containers:
+      - name: worker
+        image: your-registry/orkes-worker:latest
+        env:
+        - name: ORKES_SERVER_URL
+          valueFrom:
+            secretKeyRef:
+              name: orkes-credentials
+              key: server-url
+        - name: ORKES_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: orkes-credentials
+              key: key-id
+        - name: ORKES_KEY_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: orkes-credentials
+              key: key-secret
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+```
+
+Deploy to Kubernetes:
+
+```bash
+# Create secret with credentials
+kubectl create secret generic orkes-credentials \
+  --from-literal=server-url=$ORKES_SERVER_URL \
+  --from-literal=key-id=$ORKES_KEY_ID \
+  --from-literal=key-secret=$ORKES_KEY_SECRET
+
+# Deploy workers
+kubectl apply -f worker-deployment.yaml
+
+# Scale as needed
+kubectl scale deployment support-notification-worker --replicas=5
+```
+
+#### Option 3: AWS ECS/Fargate
+
+For serverless container deployment on AWS:
+
+```bash
+# Create ECR repository
+aws ecr create-repository --repository-name orkes-worker
+
+# Build and push image
+docker build -t orkes-worker:latest .
+docker tag orkes-worker:latest $AWS_ACCOUNT.dkr.ecr.$REGION.amazonaws.com/orkes-worker:latest
+docker push $AWS_ACCOUNT.dkr.ecr.$REGION.amazonaws.com/orkes-worker:latest
+
+# Create ECS task definition and service (via AWS Console or CloudFormation)
+```
+
+### Production Best Practices
+
+1. **Environment Variables**: Store credentials in secure secret managers (AWS Secrets Manager, HashiCorp Vault, Kubernetes Secrets)
+
+2. **Monitoring**:
+   - Use Conductor's built-in dashboard for task metrics
+   - Add application logging (CloudWatch, ELK stack)
+   - Set up alerts for failed tasks or high queue depths
+
+3. **Scaling**:
+   - Start with 2-3 worker instances
+   - Scale horizontally based on task queue depth
+   - Consider separate worker pools for different task types
+
+4. **Health Checks**:
+   - Implement liveness probes in Kubernetes
+   - Monitor worker connectivity to Conductor
+
+5. **Error Handling**:
+   - Configure retry policies in Conductor task definitions
+   - Implement circuit breakers for external service calls
+   - Set up dead letter queues for permanently failed tasks
+
 ## Use Cases
 
 This architecture can be adapted for various scenarios:
