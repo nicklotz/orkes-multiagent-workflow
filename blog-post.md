@@ -2,7 +2,7 @@
 
 When you ask an AI to write code, summarize a document, or answer a question, you're working with a single agent. That is, one model handles the entire task. Sort of like having one musician play all the instruments in a song.
 
-What if, instead, you had specialists as in a band? A drummer keeping rhythm, a bassist lending support to harmony, a guitarist adding melody. Scaled up to say, an orchestra, you also have a **conductor** ensuring everyone is in sync and collectively the best version of themselves. Specialization is one of the superpowers of multi-agent AI systems. Here's how you can build one with Orkes conductor.
+What if, instead, you had specialists as in a band? A drummer keeping rhythm, a bassist lending support to harmony, a guitarist adding melody. Scaled up to say, an orchestra, you also have a **conductor** ensuring everyone is in sync and collectively the best version of themselves. Specialization is one of the superpowers of multi-agent AI systems, and the goal if this piece is to show you how to build one with Orkes conductor.
 
 This guide walks you through how one might architect an AI-powered customer support triage system where three specialized agents collaborate to handle incoming tickets automatically. More importantly, you'll see how orchestration platforms like Conductor solve the hard problems that emerge when AI agents need to work together.
 
