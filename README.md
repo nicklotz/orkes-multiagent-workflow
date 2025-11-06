@@ -100,10 +100,15 @@ Get your credentials from:
 
 The OpenAI API key is **not stored in code**. Instead, configure it in your Orkes account:
 
-1. Log into https://play.orkes.io/
+1. Log into https://play.orkes.io/ (or your Orkes instance)
 2. Navigate to **Settings → Integrations** (or **AI/LLM Providers**)
-3. Add OpenAI as a provider
+3. Add OpenAI as a provider and give it a name (e.g., "openai" or "nl-openai")
 4. Enter your OpenAI API key
+5. **Important:** Enable at least one model (e.g., "gpt-4", "gpt-4o", or "gpt-3.5-turbo")
+
+**Then update the code:**
+- In both `run_workflow.py` and the notebook, update `llm_provider="openai"` to match your integration name
+- For example, if you named it "nl-openai", change to `llm_provider="nl-openai"`
 
 This keeps your API keys secure and centralized.
 

@@ -10,11 +10,12 @@ import sys
 import json
 from dotenv import load_dotenv
 from conductor.client.configuration.configuration import Configuration
+from conductor.shared.configuration.settings.authentication_settings import AuthenticationSettings
 from conductor.client.orkes_clients import OrkesClients
 from conductor.client.http.models import Task, WorkflowDef, TaskDef
 from conductor.client.worker.worker_task import WorkerTask
 from conductor.client.workflow.conductor_workflow import ConductorWorkflow
-from conductor.client.workflow.task.llm_tasks.llm_chat_complete import LlmChatComplete
+from conductor.client.workflow.task.llm_tasks.llm_chat_complete import LlmChatComplete, ChatMessage
 from conductor.client.workflow.task.simple_task import SimpleTask
 from conductor.client.workflow.executor.workflow_executor import WorkflowExecutor
 from conductor.client.automator.task_handler import TaskHandler
@@ -24,84 +25,53 @@ def load_configuration():
     """Load environment variables and configure Orkes client"""
     load_dotenv()
 
-    config = Configuration(
-        server_api_url=os.getenv("ORKES_SERVER_URL", "https://play.orkes.io/api"),
-        key_id=os.getenv("ORKES_KEY_ID"),
-        key_secret=os.getenv("ORKES_KEY_SECRET")
-    )
+    key_id = os.getenv("ORKES_KEY_ID")
+    key_secret = os.getenv("ORKES_KEY_SECRET")
+    server_url = os.getenv("ORKES_SERVER_URL", "https://play.orkes.io/api")
 
-    if not config.key_id or not config.key_secret:
+    if not key_id or not key_secret:
         print("❌ Error: ORKES_KEY_ID and ORKES_KEY_SECRET must be set in .env file")
         print("   Copy .env.example to .env and add your credentials")
         sys.exit(1)
+
+    auth_settings = AuthenticationSettings(
+        key_id=key_id,
+        key_secret=key_secret
+    )
+
+    config = Configuration(
+        server_api_url=server_url,
+        authentication_settings=auth_settings
+    )
 
     return config
 
 
 def create_classifier_agent():
     """Creates the classifier agent task"""
-    classifier_prompt = """
-    You are a customer support ticket classifier. Analyze the following support ticket and provide:
-    1. Category (billing, technical, account, general)
-    2. Sentiment (positive, neutral, negative, angry)
-    3. Urgency (low, medium, high, critical)
-
-    Ticket: ${workflow.input.ticket_content}
-
-    Respond in JSON format:
-    {
-      "category": "<category>",
-      "sentiment": "<sentiment>",
-      "urgency": "<urgency>",
-      "reasoning": "<brief explanation>"
-    }
-    """
 
     return LlmChatComplete(
         task_ref_name="classify_ticket",
-        llm_provider="openai",
-        model="gpt-4",
-        instructions=classifier_prompt,
-        messages=[{
-            "role": "user",
-            "content": "${workflow.input.ticket_content}"
-        }]
+        llm_provider="nl-openai",
+        model="gpt-4",  # Using GPT-4
+        messages=[
+            ChatMessage(role="system", message="You are a customer support ticket classifier. Analyze tickets and provide category (billing/technical/account/general), sentiment (positive/neutral/negative/angry), and urgency (low/medium/high/critical) in JSON format with a reasoning field."),
+            ChatMessage(role="user", message="${workflow.input.ticket_content}")
+        ]
     )
 
 
 def create_knowledge_agent():
     """Creates the knowledge search agent"""
-    knowledge_prompt = """
-    You are a knowledge base expert. Based on the ticket classification,
-    search for relevant solutions and provide recommendations.
-
-    Ticket Content: ${workflow.input.ticket_content}
-    Category: ${classify_ticket.output.result.category}
-    Urgency: ${classify_ticket.output.result.urgency}
-
-    Provide:
-    1. Relevant KB articles or documentation
-    2. Suggested resolution steps
-    3. Confidence level (0-100) that this resolves the issue
-
-    Respond in JSON format:
-    {
-      "kb_articles": ["article_id_1", "article_id_2"],
-      "resolution_steps": ["step1", "step2"],
-      "confidence": <0-100>,
-      "suggested_response": "<draft response to customer>"
-    }
-    """
 
     return LlmChatComplete(
         task_ref_name="search_knowledge",
-        llm_provider="openai",
-        model="gpt-4",
-        instructions=knowledge_prompt,
-        messages=[{
-            "role": "user",
-            "content": "Find solution for: ${workflow.input.ticket_content}"
-        }]
+        llm_provider="nl-openai",
+        model="gpt-4",  # Using GPT-4
+        messages=[
+            ChatMessage(role="system", message="You are a knowledge base expert. Provide KB articles, resolution steps, confidence level (0-100), and a suggested customer response in JSON format."),
+            ChatMessage(role="user", message="Ticket: ${workflow.input.ticket_content}. Category: ${classify_ticket.output.result.category}. Urgency: ${classify_ticket.output.result.urgency}")
+        ]
     )
 
 
@@ -141,14 +111,16 @@ def create_escalation_decision():
 
     notification_task = SimpleTask(
         task_def_name="send_escalation_notification",
-        task_reference_name="notify_team",
-        inputs={
-            'ticket_id': '${workflow.input.ticket_id}',
-            'urgency': '${classify_ticket.output.result.urgency}',
-            'category': '${classify_ticket.output.result.category}',
-            'assigned_to': '${eval_escalation.output.assigned_team}'
-        }
+        task_reference_name="notify_team"
     )
+
+    # Set input parameters after creating the task
+    notification_task.input_parameters = {
+        'ticket_id': '${workflow.input.ticket_id}',
+        'urgency': '${classify_ticket.output.result.urgency}',
+        'category': '${classify_ticket.output.result.category}',
+        'assigned_to': '${eval_escalation.output.assigned_team}'
+    }
 
     return escalation_eval, notification_task
 
@@ -164,10 +136,12 @@ def create_support_triage_workflow(workflow_executor):
     # Add all tasks in sequence
     classifier = create_classifier_agent()
     knowledge = create_knowledge_agent()
-    escalation_eval, notification = create_escalation_decision()
+    # Skip escalation for now - testing core LLM agents first
+    # escalation_eval, notification = create_escalation_decision()
 
     # Build the workflow chain
-    workflow >> classifier >> knowledge >> escalation_eval >> notification
+    workflow >> classifier >> knowledge
+    # workflow >> escalation_eval >> notification
 
     return workflow
 
@@ -199,7 +173,7 @@ def main():
     # Load configuration
     print("\n📋 Loading configuration...")
     config = load_configuration()
-    print(f"✅ Connected to: {config.server_api_url}")
+    print(f"✅ Connected to: {config.host}")
 
     # Initialize clients
     clients = OrkesClients(config)
@@ -211,13 +185,10 @@ def main():
     print("✅ Workflow created: customer_support_triage")
 
     # Register worker (optional - needed for notifications)
-    print("\n👷 Registering worker...")
-    task_handler = TaskHandler(
-        workers=[send_notification],
-        configuration=config,
-        scan_for_annotated_workers=False
-    )
-    print("✅ Worker registered: send_escalation_notification")
+    # Note: Worker registration has some compatibility issues with current SDK version
+    # The workflow will still run, but custom worker tasks will need to be run separately
+    print("\n👷 Skipping worker registration for this test...")
+    print("   (Worker tasks can be run separately in production)")
 
     # Sample test tickets
     test_tickets = [
@@ -251,7 +222,7 @@ def main():
 
             print(f"\n✅ Workflow started!")
             print(f"   Workflow ID: {workflow_id}")
-            print(f"   View in UI: {config.server_api_url.replace('/api', '')}/execution/{workflow_id}")
+            print(f"   View in UI: {config.host.replace('/api', '')}/execution/{workflow_id}")
 
         except Exception as e:
             print(f"\n❌ Error executing workflow: {e}")
@@ -266,7 +237,7 @@ def main():
         print(f"  {i}. {wf_id}")
 
     print(f"\n💡 To monitor workflows:")
-    print(f"   - Visit the Orkes UI: {config.server_api_url.replace('/api', '')}")
+    print(f"   - Visit the Orkes UI: {config.host.replace('/api', '')}")
     print(f"   - Navigate to 'Executions' to see live progress")
     print("\n✨ Done!")
 
