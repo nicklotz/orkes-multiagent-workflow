@@ -23,6 +23,7 @@ Instead, what if you built a team of specialists? That's where multi-agent syste
 Our system uses three AI agents, each with a defined role:
 
 ```mermaid
+%%{init: {'theme':'base', 'themeVariables': {'fontSize':'14px'}}}%%
 flowchart LR
     A[Ticket] --> B[1. Classify]
     B --> C[2. Search KB]
