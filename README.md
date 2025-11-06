@@ -375,4 +375,4 @@ MIT
 
 ## Author
 
-Created as part of the Orkes Content Engineer Exercise
+Nick Lotz
