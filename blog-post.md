@@ -1,26 +1,35 @@
-# Orchestrating AI Agents: From Solo Acts to Symphony
+# Orchestrating a Symphony of AI Agents.
 
-When you ask an AI to write code, summarize a document, or answer a question, you're working with a single agent—one model handling the entire task. It's like having one musician play all the instruments in a song. Sure, it works, but you're missing something.
+When you ask an AI to write code, summarize a document, or answer a question, you're working with a single agent. That is, one model handles the entire task. Sort of like having one musician play all the instruments in a song.
 
-What if instead, you had specialists? A drummer keeping rhythm, a bassist laying the foundation, a guitarist adding melody, and a conductor ensuring everyone plays in harmony. That's the power of multi-agent AI systems, and today I'll show you how to build one using Orkes Conductor.
+What if, instead, you had specialists as in a band? A drummer keeping rhythm, a bassist lending support to harmony, a guitarist adding melody. Scaled up to say, an orchestra, you also have a **conductor** ensuring everyone is in sync and collectively the best version of themselves. Specialization is one of the superpowers of multi-agent AI systems. Here's how you can build one with Orkes conductor.
 
-We're going to build an AI-powered customer support triage system where three specialized agents collaborate to handle incoming tickets automatically. More importantly, you'll see how orchestration platforms like Conductor solve the hard problems that emerge when AI agents need to work together.
+This guide walks you through how one might architect an AI-powered customer support triage system where three specialized agents collaborate to handle incoming tickets automatically. More importantly, you'll see how orchestration platforms like Conductor solve the hard problems that emerge when AI agents need to work together.
 
 ## The Problem: One Agent Can't Do Everything Well
 
 Think about your typical support queue. Tickets flood in with wildly different needs:
 - "I can't log into my account"
-- "URGENT: Production is down!"
+- "Production is down!"
 - "Why was I charged twice?"
 - "How do I reset my password?"
 
-You could throw all of these at a single LLM and ask it to handle everything. But here's what happens: the model becomes a generalist that's decent at classification, okay at finding solutions, mediocre at escalation decisions. It's trying to be everything, so it masters nothing.
+Technically you could throw all of these at one LLM and ask it to handle everything. But here's what happens: the limited parameters and context window leads to a generalist that tries to be everything, so it masters nothing.
 
 Instead, what if you built a team of specialists? That's where multi-agent systems shine.
 
 ## The Multi-Agent Architecture
 
 Our system uses three AI agents, each with a defined role:
+
+### Meet the Team
+
+**Classifier Agent**: The intake specialist. It reads every ticket and extracts structured data—category, sentiment, urgency. It's for triage, determining what needs immediate attention versus what can wait.
+
+**Knowledge Agent**: Your documentation expert. Armed with the classification, it searches your knowledge base, past tickets, and FAQs. It doesn't just find relevant articles—it synthesizes a suggested response and provides a confidence score.
+
+**Escalation Agent**: The decision maker. It evaluates the knowledge agent's confidence against the ticket's urgency. Critical issues go straight to the on-call team. If it has a high-confidence solution, then it will send it automatically.
+
 
 ```
 ┌─────────────┐
@@ -45,15 +54,7 @@ Our system uses three AI agents, each with a defined role:
                           └──────────┘     └──────────┘
 ```
 
-### Meet the Team
-
-**Classifier Agent**: The intake specialist. It reads every ticket and extracts structured data—category, sentiment, urgency. Think of it as your emergency room triage nurse, determining what needs immediate attention versus what can wait.
-
-**Knowledge Agent**: Your documentation expert. Armed with the classification, it searches your knowledge base, past tickets, and FAQs. It doesn't just find relevant articles—it synthesizes a suggested response and provides a confidence score.
-
-**Escalation Agent**: The decision maker. It evaluates the knowledge agent's confidence against the ticket's urgency. Critical issues go straight to the on-call team. High-confidence solutions? Sent automatically.
-
-But here's the challenge: how do these agents communicate? How do you handle failures? What if the Knowledge Agent times out? Who orchestrates the handoffs?
+This setup leads to a challenge though: how do these agents communicate? How do you handle failures? What if the Knowledge Agent times out? Who orchestrates the handoffs?
 
 That's where Conductor comes in.
 
@@ -65,7 +66,7 @@ When you move from one agent to many, complexity explodes. You need:
 - **State management**: How do you track a ticket across multiple async operations?
 - **Observability**: When something breaks, how do you debug it?
 
-Conductor handles all of this. It's the air traffic controller for your AI agents.
+Conductor handles all of this. It can be a control plane for your AI agents.
 
 ## Building the Classifier Agent
 
@@ -77,7 +78,7 @@ from conductor.client.workflow.task.llm_tasks.llm_chat_complete import LlmChatCo
 def create_classifier_agent():
     return LlmChatComplete(
         task_ref_name="classify_ticket",
-        llm_provider="openai",  # Match this to your Orkes integration name
+        llm_provider="openai",  # Just an example, match this to what you named your LLM integration in orkes
         model="gpt-4",
         messages=[
             ChatMessage(
@@ -94,7 +95,7 @@ def create_classifier_agent():
 
 Notice a few things:
 
-**1. No API calls in your code**: You're not calling OpenAI's API directly. Conductor handles the HTTP request, retries, timeout logic, and error handling.
+**1. No API calls in your code**: You're not calling OpenAI's API directly. Conductor handles the requests as an abstraction layer.
 
 **2. Variable substitution**: The `${workflow.input.ticket_content}` syntax is Conductor's way of passing data. When the workflow executes, this gets replaced with the actual ticket text.
 
@@ -174,7 +175,7 @@ def send_notification(task_input):
 
 ### How Worker Polling Works
 
-Here's the key insight: workers actively *pull* tasks from Conductor rather than having tasks pushed to them. Here's the flow:
+Workers actively *pull* tasks from Conductor rather than having tasks pushed to them. Here's the flow might look:
 
 ```mermaid
 sequenceDiagram
@@ -243,34 +244,23 @@ That `>>` operator is doing a lot of heavy lifting. It's creating a directed acy
 - Handling failures with retries
 - Providing visibility into every step
 
+The end result looks something like this visually:
+
+<img width="285" height="485" alt="Screenshot 2025-11-05 at 9 11 55 PM" src="https://github.com/user-attachments/assets/6c67e5a9-e0b3-4a5a-b45e-6b6389124259" />
+
 ## The Real Power: What You Get For Free
 
 When you build a multi-agent system this way, you get capabilities that are hard to achieve otherwise:
 
-**Separation of Concerns**: Each agent does one thing well. Need to improve classification? Update that agent without touching knowledge search or escalation logic. Deploy the new Classifier, and your workflow automatically uses it.
+**Separation of Concerns**: Each agent does one thing well. Need to improve classification? Update that agent without touching knowledge search or escalation logic. 
 
 **Independent Scaling**: Maybe your Knowledge Agent is compute-intensive and needs GPUs. The Classifier is fast and runs on CPUs. With Conductor, you scale each component based on its needs.
 
-**Testability**: Test each agent independently before integration. Mock the Classifier's output to test the Knowledge Agent in isolation. This is impossible when everything's in one monolithic prompt.
+**Testability**: Test each agent independently before integration. Mock the Classifier's output to test the Knowledge Agent in isolation. This is very difficult when everything's in one monolithic prompt.
 
-**Observability**: Every workflow execution is tracked. When a ticket gets misclassified, you see exactly what the Classifier returned and why the Knowledge Agent couldn't find a solution. No more black boxes.
+**Observability**: Every workflow execution is tracked. When a ticket gets misclassified, you see exactly what the Classifier returned and why the Knowledge Agent couldn't find a solution. 
 
-**Flexibility**: Want to add duplicate detection? Human-in-the-loop approval? A/B test different prompts? These are workflow changes, not agent rewrites.
-
-## Benefits and Challenges
-
-### What You Gain
-- **Better results**: Specialized agents outperform generalists
-- **Easier maintenance**: Change one agent without risking others
-- **Clear ownership**: Each agent has defined inputs/outputs
-- **Production-ready patterns**: Built-in retry, timeout, error handling
-
-### What It Costs You
-- **More moving parts**: Three agents means three things to monitor
-- **Network overhead**: Agents communicate via Conductor, not memory
-- **Learning curve**: You're adopting an orchestration platform, not just an SDK
-
-In my experience, the benefits far outweigh the costs once you move past proof-of-concept. The first time you need to debug why a ticket was misrouted, you'll appreciate having visibility into every step.
+**Flexibility**: Want to add duplicate detection? Human-in-the-loop approval? A/B test different prompts? These are workflow changes, not rewrites to the agent logic itself.
 
 ## Getting Started
 
