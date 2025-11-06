@@ -205,15 +205,7 @@ sequenceDiagram
     C->>C: Continue workflow
 ```
 
-This polling architecture gives you:
-
-**Decoupling**: Your worker can live anywhere—different server, different language, different cloud provider. It just needs network access to Conductor.
-
-**Scalability**: Need to handle more load? Spin up more worker instances. They all poll the same queue.
-
-**Reliability**: If a worker crashes mid-task, Conductor knows the task didn't complete. It can retry or route to another worker.
-
-**Observability**: Every task execution is tracked in Conductor's UI. When something breaks, you see exactly which task failed and why.
+This polling architecture curially gives you **decoupling** (your worker can live anywhere), and **scalability** (you can spin up more workesr if needed). If a worker crashes mid-task, Conductor can also reroute to another worker.
 
 ## Composing the Complete Workflow
 
